@@ -1,4 +1,8 @@
+@import "functions";
+@import "helpers/variables";
+@import "mixins";
+//要客製化，上面三支無論改不改，都要一起 import 進來
 
-
-@import "bootstrap/_bootstrap.scss";
+@import "bootstrap";
+@import "font-awesome";
 @import "_style.scss";

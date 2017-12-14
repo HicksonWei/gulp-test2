@@ -15,8 +15,8 @@
     "tests"
   ],
   "dependencies": {
-    "jquery": "^3.2.1",
     "vue": "^2.5.10",
-    "popper.js": "^1.12.9"
+    "popper.js": "^1.12.9",
+    "jquery": "^3.2.1"
   }
 }

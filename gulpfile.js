@@ -19,6 +19,7 @@ var minimist = require('minimist');
 // var gulpSequence = require('gulp-sequence')
 // var rename = require("gulp-rename");
 // const imagemin = require('gulp-imagemin');
+// var ghPages = require('gulp-gh-pages');
 
 
 //設定環境參數，切換開發版本
@@ -43,26 +44,18 @@ gulp.task('copyHTML', function(){
         // src 接來源，dest 接目的地，pipe 可以接很多個任務
 });
 
-//移動 bootstrap.js 到 vendors
-gulp.task('copyBootstrapJs', function () {
-    return gulp.src('./node_modules/bootstrap/dist/js/bootstrap.js')
-        .pipe(gulp.dest('./.tmp/vendors'))
-});
 
-//移動 bootstrapScss 到 source
-gulp.task('copyBS', function () {
-    return gulp.src('./node_modules/bootstrap/scss/**')  
-        .pipe(gulp.dest('./source/scss/bootstrap'))
+//複製一份 variables 到 helpers
+gulp.task('copyBsV', function () {
+    return gulp.src('./node_modules/bootstrap/scss/_variables.scss')
+        .pipe(gulp.dest('./source/scss/helpers'))
 });
-gulp.task('BSrename', function () {
-    return gulp.src('./source/scss/bootstrap/bootstrap.scss')
-        .pipe($.rename('_bootstrap.scss'))    
-        .pipe(gulp.dest('./source/scss/bootstrap'))
-});
-gulp.task('BSdelete', function () {
-    return gulp.src(['./source/scss/bootstrap/bootstrap-grid.scss', './source/scss/bootstrap/bootstrap-reboot.scss', './source/scss/bootstrap/bootstrap.scss'], { read: false })
-        .pipe($.clean());
-});
+//移動 font 到 public
+gulp.task('copyFonts', function () {
+    return gulp.src('./node_modules/font-awesome/fonts/**')
+        .pipe(gulp.dest('./public/fonts'))
+})
+
 
 // 將 .jade 編譯成 .html 
 gulp.task('jade', function () {
@@ -91,7 +84,10 @@ gulp.task('sass', function () {
         .pipe($.plumber())
         .pipe($.sourcemaps.init())
         // 分支位置指示
-        .pipe($.sass().on('error', $.sass.logError))
+        .pipe($.sass({
+            outputStyle: 'nested',
+            includePaths: ['./node_modules/bootstrap/scss', './node_modules/font-awesome/scss']
+        }).on('error', $.sass.logError))
         //至此 css 編譯完成
         .pipe($.postcss(plugins))
         //加上前綴詞
@@ -136,14 +132,14 @@ gulp.task('bower', function () {
 });
 
 // 合併外部 .js 並匯入 public
-gulp.task('vendorJs', ['bower', 'copyBootstrapJs'], function(){
+gulp.task('vendorJs', ['bower'], function(){
     // bower 要完全做完，才做 vendors
-    return gulp.src('./.tmp/vendors/**/*.js')
+    return gulp.src(['./.tmp/vendors/**/*.js', './node_modules/bootstrap/dist/js/bootstrap.js'])
         .pipe($.order([
             'jquery.js',
             'popper.js',
-            'vue.js',
-            'bootstrap.js'
+            'bootstrap.js',
+            'vue.js'
         ]))    
         .pipe($.concat('vendors.js'))
         .pipe($.if(options.env === 'production', $.uglify()))
@@ -173,12 +169,19 @@ gulp.task('watch', function () {
     gulp.watch('./source/js/**/*.js', ['babel']);
 });
 
-//把 bootstrap 的 scss 抓到 source 中，以利編輯
-//.js 的部分則是在任務 copyBootstrapJs 中被移到 vendors
-gulp.task('BSenv', $.sequence('copyBS', 'BSrename', 'BSdelete'));
+
+
+//上傳到 Github Pages (必須先上傳過一次)
+gulp.task('deploy', function () {
+    return gulp.src('./public/**/*')
+        .pipe($.ghPages());
+});
+
+//把bootstrap的variables複製到helpers以利修改，把font-awesome的fonts複製一份到public (都只要做一次)
+gulp.task('once', $.sequence('copyBsV', 'copyFonts'));
 
 //交付前專案建立
-gulp.task('build', $.sequence('clean', 'jade', 'sass', 'babel', 'vendorJs'));
+gulp.task('build', $.sequence('clean', 'jade', 'sass', 'babel', 'vendorJs', 'image-min'));
 
 // default 為預設，使用時只需輸入 gulp 即可
-gulp.task('default', ['jade', 'sass', 'babel', 'vendorJs', 'browser-sync','image-min', 'watch']);
+gulp.task('default', ['jade', 'sass', 'babel', 'vendorJs', 'browser-sync', 'watch']);
